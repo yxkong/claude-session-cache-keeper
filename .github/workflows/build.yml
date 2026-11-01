@@ -1,0 +1,88 @@
+name: Build and release CacheKeeper
+on:
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: 'Publish a GitHub Release and create its version tag if missing'
+        type: boolean
+        default: false
+  push:
+    tags: ['v*']
+permissions:
+  contents: read
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  package:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-14
+            target: mac
+          - os: windows-2022
+            target: win
+          - os: ubuntu-22.04
+            target: linux
+    runs-on: ${{ matrix.os }}
+    env:
+      ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+      CACHE_KEEPER_NATIVE_UPDATES: ${{ matrix.target == 'linux' && '1' || matrix.target == 'mac' && secrets.MAC_CSC_LINK != '' && '1' || matrix.target == 'win' && secrets.WINDOWS_CSC_LINK != '' && '1' || '0' }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: '22.21.0'
+          cache: npm
+      - run: npm ci
+      - run: npm run icons
+      - run: npm run build
+      - run: npm test
+      - run: npx electron-builder --config electron-builder.config.cjs --${{ matrix.target }} --publish never
+        env:
+          CSC_LINK: ${{ matrix.target == 'mac' && secrets.MAC_CSC_LINK || matrix.target == 'win' && secrets.WINDOWS_CSC_LINK || '' }}
+          CSC_KEY_PASSWORD: ${{ matrix.target == 'mac' && secrets.MAC_CSC_KEY_PASSWORD || matrix.target == 'win' && secrets.WINDOWS_CSC_KEY_PASSWORD || '' }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      - uses: actions/upload-artifact@v7.0.2
+        with:
+          name: CacheKeeper-${{ matrix.target }}
+          path: |
+            release/native/*.dmg
+            release/native/*.zip
+            release/native/*.exe
+            release/native/*.AppImage
+            release/native/*.yml
+            release/native/*.blockmap
+          if-no-files-found: error
+  release:
+    needs: package
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: '22.21.0'
+          cache: npm
+      - uses: actions/download-artifact@v8.0.2
+        with:
+          pattern: CacheKeeper-*
+          merge-multiple: true
+          path: release/native
+      - run: npm ci --ignore-scripts
+        env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+      - run: npm run release:metadata -- --directory=release/native
+      - uses: actions/upload-artifact@v7.0.2
+        with:
+          name: CacheKeeper-release
+          path: release/native/*
+      - name: Publish complete release
+        if: github.event_name == 'push' || inputs.publish == true
+        run: node scripts/publish-release.mjs
+        env:
+          GH_TOKEN: ${{ github.token }}

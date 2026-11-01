@@ -1,0 +1,7 @@
+{
+  "name": "session-cache-keeper",
+  "version": "0.2.1",
+  "description": "CacheKeeper 桌面应用的会话执行器。默认关闭，260～280 秒随机保活，默认建议每段空闲尝试 6 次，可配置正整数次数。",
+  "author": { "name": "yxkong" },
+  "license": "MIT"
+}

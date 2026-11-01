@@ -1,0 +1,21 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import { EventEmitter } from 'node:events';
+import { createHash } from 'node:crypto';
+import { NativeUpdater } from '../app/core/native-updater.mjs';
+test('native downloads verify the release digest; failed installation restores normal quit behavior',async t=>{
+  const root=await fs.mkdtemp(path.resolve('.tmp/native-update-'));t.after(()=>fs.rm(root,{recursive:true,force:true}));
+  const file=path.join(root,'update.zip'),data=Buffer.from('synthetic signed-target payload');await fs.writeFile(file,data);
+  const engine=new EventEmitter();let quitting=false,installs=0;
+  engine.checkForUpdates=async()=>({updateInfo:{version:'0.4.0'},cancellationToken:{cancel(){}}});
+  engine.downloadUpdate=async()=>{engine.emit('download-progress',{percent:75});return [file];};
+  engine.quitAndInstall=()=>{installs++;engine.emit('error',new Error('Synthetic installation failed'));};
+  const native=new NativeUpdater({autoUpdater:engine,prepareQuit:()=>{quitting=true;},recoverQuit:()=>{quitting=false;}});
+  assert.equal(engine.autoDownload,false);assert.equal(engine.autoInstallOnAppQuit,false);
+  const asset={file:'update.zip',bytes:data.length,sha256:createHash('sha256').update(data).digest('hex')};let progress=0;
+  await native.download('0.4.0',p=>{progress=p;},asset);assert.equal(progress,75);assert.equal(installs,0);
+  await assert.rejects(native.install(),/Synthetic installation failed/);assert.equal(quitting,false);
+  await fs.writeFile(file,'corrupt');await assert.rejects(native.download('0.4.0',()=>{},asset),/校验/);assert.equal(native.ready,false);
+});

@@ -1,0 +1,9 @@
+node_modules/
+.tmp/
+dist/
+release/
+build/
+.DS_Store
+plugin/.claude-plugin/types/
+*.log
+bak/

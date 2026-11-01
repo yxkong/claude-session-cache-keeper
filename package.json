@@ -1,0 +1,41 @@
+{
+  "name": "claude-session-cache-keeper",
+  "productName": "CacheKeeper",
+  "version": "0.3.0",
+  "description": "按会话管理 Claude Code 缓存续热 · by yxkong",
+  "author": "yxkong",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "main": "dist/main.cjs",
+  "engines": {
+    "node": ">=22.18.0"
+  },
+  "scripts": {
+    "icons": "node scripts/icons.mjs",
+    "build": "node scripts/build.mjs",
+    "start": "electron .",
+    "test": "node scripts/test.mjs",
+    "test:plugin": "node scripts/test.mjs --plugin",
+    "package": "node scripts/package.mjs",
+    "verify": "node scripts/verify-release.mjs",
+    "release:metadata": "node scripts/release-metadata.mjs"
+  },
+  "dependencies": {
+    "cross-spawn": "7.0.6",
+    "electron-updater": "6.8.11",
+    "semver": "7.8.5"
+  },
+  "devDependencies": {
+    "@electron/packager": "20.3.0",
+    "archiver": "8.0.0",
+    "electron": "45.2.1",
+    "electron-builder": "26.18.0",
+    "esbuild": "0.28.2",
+    "jsdom": "27.4.0",
+    "png-to-ico": "3.0.2",
+    "resedit": "3.1.0",
+    "sharp": "0.35.5",
+    "tar": "7.5.22"
+  }
+}

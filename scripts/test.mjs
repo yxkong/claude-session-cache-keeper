@@ -1,0 +1,15 @@
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import spawn from 'cross-spawn';
+const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
+await fs.mkdir(path.join(root, '.tmp'), { recursive: true });
+const plugin = process.argv.includes('--plugin');
+const command = plugin ? process.env.CLAUDE_BIN || 'claude' : process.execPath;
+const args = plugin ? ['plugin', 'test', 'plugin'] : ['--experimental-strip-types', '--test', 'test/*.test.mjs'];
+const result = spawn.sync(command, args, { cwd: root, encoding: 'utf8', windowsHide: true, maxBuffer: 8 * 1024 * 1024 });
+const output = (result.stdout || '') + (result.stderr || '');
+await fs.writeFile(path.join(root, '.tmp', plugin ? 'plugin-tests.log' : 'desktop-tests.log'), output);
+process.stdout.write(output);
+if (result.error) console.error(result.error.message);
+process.exitCode = result.status ?? 1;

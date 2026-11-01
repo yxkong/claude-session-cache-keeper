@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none'">
+  <title>CacheKeeper · by yxkong</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="app-header">
+    <div class="header-actions"><span class="live-badge"><i></i><span id="connection-count">正在读取会话</span></span><button id="updates" class="secondary">检查更新</button><button id="install" class="secondary">安装连接插件</button></div>
+  </header>
+  <main>
+    <aside class="sidebar">
+<div class="identity sidebar-brand"><img src="logo.png" alt="CacheKeeper 鱼形循环标识"><div><div class="wordmark"><h1>CacheKeeper</h1><span>by yxkong</span></div><p>只续热你选中的会话</p></div></div>
+      <div class="section-title"><h2>会话</h2><button id="refresh" class="icon-button" aria-label="刷新会话" title="刷新">↻</button></div>
+      <input id="search" type="search" placeholder="搜索会话或项目" aria-label="搜索会话或项目">
+      <label class="offline-option"><input id="offline" type="checkbox">显示离线会话</label>
+      <div id="sessions" class="sessions" role="list" aria-label="会话列表"></div>
+      <div class="sidebar-foot status-legend" aria-label="会话状态说明"><span><i class="session-dot working"></i>工作中</span><span><i class="session-dot online"></i>在线</span><span><i class="session-dot"></i>离线</span></div>
+    </aside>
+    <section class="workspace">
+      <div id="empty" class="empty-state"><img src="logo.png" alt=""><span class="eyebrow">READY WHEN YOU ARE</span><h2>先连接一条 Code 会话</h2><p>安装连接插件后，在需要管理的会话中重载插件。<br>每条连接默认关闭，由你决定何时开启。</p><button id="empty-install" class="primary">安装连接插件</button><button id="docs" class="text-button">还没安装 Claude Code CLI？</button></div>
+      <div id="detail" hidden>
+        <div class="session-heading"><div><h2 id="session-title"></h2><p id="project" class="project"></p></div><div class="session-actions"><span id="phase" class="phase"></span><button id="toggle" type="button" class="primary">应用设置并开启</button></div></div>
+        <div class="session-meta"><span id="model"></span><span id="executor"></span><span id="session-id"></span></div>
+        <div id="context-note" class="context-note"></div>
+        <div class="status-strip"><div><span class="small-label">本轮尝试</span><strong id="attempts">0 / 6</strong></div><div><span class="small-label">下一次续热</span><strong id="countdown">—</strong></div><div class="status-note" id="last-result">尚无续热结果</div></div>
+        <section class="settings-card"><div class="card-heading"><h3>本条会话的设置</h3><span>保存配置不会开启其他会话</span></div>
+          <form id="policy-form">
+            <div class="field-row"><label for="minimum">随机保活间隔<small>缓存按 5 分钟处理</small></label><div class="interval-input"><input id="minimum" type="number" min="30" max="280" step="1" required aria-label="最短间隔秒数"><span>～</span><input id="maximum" type="number" min="30" max="280" step="1" required aria-label="最长间隔秒数"><span>秒</span></div></div>
+            <div class="field-row"><label for="maximum-attempts">每段空闲最多尝试<small>建议 6 次；正常请求会重新计数</small></label><div class="number-input"><input id="maximum-attempts" type="number" min="1" step="1" required aria-label="最大尝试次数"><span>次</span></div></div>
+            <div class="field-row"><label for="token-threshold">最小缓存规模<small>0 表示不设门槛</small></label><div class="number-input wide"><input id="token-threshold" type="number" min="0" max="10000000" step="1" required aria-label="最小缓存 token"><span>token</span></div></div>
+            <div id="validation" class="validation" role="alert"></div>
+            <div class="form-actions"><span class="save-hint">仅保存本条会话设置</span><button id="save" type="submit" class="secondary">保存设置</button></div>
+          </form>
+        </section>
+        <section class="usage-card"><div class="card-heading"><h3>本轮续热用量</h3><span>实际 token，按你的 API 账单计费</span></div><div class="metrics"><div><span>缓存规模</span><strong id="cache-size">0</strong></div><div><span>缓存读取</span><strong id="cache-reads">0</strong></div><div><span>缓存写入</span><strong id="cache-writes">0</strong></div><div><span>模型输出</span><strong id="outputs">0</strong></div></div></section>
+        <p class="cost-note">达到次数上限、错过窗口、失败或未命中时停止本轮。已发出的请求无法撤回。</p>
+      </div>
+    </section>
+  </main>
+  <div id="notice" class="notice" role="status" hidden></div>
+  <dialog id="updates-dialog" aria-labelledby="updates-title">
+    <div class="update-heading"><h2 id="updates-title">更新 CacheKeeper</h2><button id="updates-close" class="text-button">关闭</button></div>
+    <p id="updates-source" class="update-muted"></p>
+    <section class="update-item"><div><h3>桌面应用</h3><p id="app-update-version"></p><small id="app-update-mode"></small></div><div class="update-actions"><button id="app-download" class="secondary" disabled>下载新版</button><button id="app-apply" class="primary" disabled>安装更新</button></div></section>
+    <section class="update-item"><div><h3>连接插件</h3><p id="plugin-update-version"></p><small id="plugin-update-compatibility"></small></div><div class="update-actions"><button id="plugin-download" class="secondary" disabled>下载插件</button><button id="plugin-apply" class="primary" disabled>安装插件</button></div></section>
+    <progress id="update-progress" max="100" value="0" hidden aria-label="更新下载进度"></progress>
+    <p id="updates-message" role="status"></p>
+    <details id="release-notes" hidden><summary>本版发布说明</summary><pre id="release-notes-text"></pre></details>
+    <div class="update-footer"><button id="release-page" class="text-button">查看 GitHub 发布页</button><button id="update-cancel" class="secondary" hidden>取消下载</button><button id="update-check" class="secondary">重新检查</button></div>
+  </dialog>
+  <footer><span id="version">CacheKeeper</span><span>本机运行 · 不保存 API Key</span><button id="copy-reload" class="text-button">复制重载命令</button></footer>
+  <script src="renderer.js" defer></script>
+</body></html>

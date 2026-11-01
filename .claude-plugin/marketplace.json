@@ -1,0 +1,6 @@
+{
+  "name": "yxkong-cache-tools",
+  "description": "CacheKeeper · 按会话管理缓存续热",
+  "owner": { "name": "yxkong" },
+  "plugins": [{ "name": "session-cache-keeper", "source": "./plugin" }]
+}
