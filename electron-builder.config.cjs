@@ -1,5 +1,8 @@
 const fs=require('node:fs');
 const yaml=require('js-yaml');
+// GitHub supplies absent secrets as empty strings; builder treats an empty
+// CSC_LINK as a filesystem path, rather than an unsigned build.
+if(process.env.CSC_LINK==='')delete process.env.CSC_LINK;
 const config=yaml.load(fs.readFileSync(require('node:path').join(__dirname,'electron-builder.yml'),'utf8'));
 const release=require('./release-config.json');
 const [owner,repo]=release.repository.split('/');
