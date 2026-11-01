@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
     inputs:
       publish:
-        description: 'Publish a GitHub Release and create its version tag if missing'
+        description: Publish a complete GitHub Release
         type: boolean
         default: false
   push:
@@ -20,42 +20,46 @@ jobs:
       matrix:
         include:
           - os: macos-14
-            target: mac
+            platform: mac
+            target: universal-apple-darwin
+            rustTargets: aarch64-apple-darwin,x86_64-apple-darwin
           - os: windows-2022
-            target: win
+            platform: win
+            target: x86_64-pc-windows-msvc
+            rustTargets: x86_64-pc-windows-msvc
           - os: ubuntu-22.04
-            target: linux
+            platform: linux
+            target: x86_64-unknown-linux-gnu
+            rustTargets: x86_64-unknown-linux-gnu
     runs-on: ${{ matrix.os }}
-    env:
-      ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
-      CACHE_KEEPER_NATIVE_UPDATES: ${{ matrix.target == 'linux' && '1' || matrix.target == 'mac' && secrets.MAC_CSC_LINK != '' && '1' || matrix.target == 'win' && secrets.WINDOWS_CSC_LINK != '' && '1' || '0' }}
     steps:
       - uses: actions/checkout@v7.0.1
       - uses: actions/setup-node@v7.1.0
         with:
           node-version: '22.21.0'
           cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.rustTargets }}
+      - name: Linux native dependencies
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential librsvg2-dev patchelf libayatana-appindicator3-dev
       - run: npm ci
-      - run: npm run icons
       - run: npm run build
       - run: npm test
-      - run: npx electron-builder --config electron-builder.config.cjs --${{ matrix.target }} --publish never
+      - run: npm run test:rust
+      - run: npm run package -- --target=${{ matrix.target }}
         env:
-          CSC_LINK: ${{ matrix.target == 'mac' && secrets.MAC_CSC_LINK || matrix.target == 'win' && secrets.WINDOWS_CSC_LINK || '' }}
-          CSC_KEY_PASSWORD: ${{ matrix.target == 'mac' && secrets.MAC_CSC_KEY_PASSWORD || matrix.target == 'win' && secrets.WINDOWS_CSC_KEY_PASSWORD || '' }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+      - run: npm run verify
       - uses: actions/upload-artifact@v7.0.2
         with:
-          name: CacheKeeper-${{ matrix.target }}
+          name: CacheKeeper-${{ matrix.platform }}
           path: |
-            release/native/*.dmg
-            release/native/*.zip
-            release/native/*.exe
-            release/native/*.AppImage
-            release/native/*.yml
-            release/native/*.blockmap
+            release/native/CacheKeeper-*
+            release/native/build-*.json
+            release/native/verification-*.json
           if-no-files-found: error
   release:
     needs: package
@@ -74,8 +78,6 @@ jobs:
           merge-multiple: true
           path: release/native
       - run: npm ci --ignore-scripts
-        env:
-          ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
       - run: npm run release:metadata -- --directory=release/native
       - uses: actions/upload-artifact@v7.0.2
         with:

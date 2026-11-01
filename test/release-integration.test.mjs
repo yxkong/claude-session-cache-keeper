@@ -2,40 +2,20 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import http from 'node:http';
-import { releaseAssets } from '../scripts/lib/release-assets.mjs';
-import { GitHubReleases } from '../app/core/github-releases.mjs';
-import { UpdateManager } from '../app/core/updates.mjs';
-import { PluginInstaller } from '../app/core/cli.mjs';
-test('published-format HTTP fixture downloads, verifies, and installs only the plugin without enabling sessions',async t=>{
-  const root=await fs.mkdtemp(path.resolve('.tmp/release-http-'));t.after(()=>fs.rm(root,{recursive:true,force:true}));
-  const directory=path.join(root,'release');await fs.mkdir(directory);
-  const pkg=JSON.parse(await fs.readFile('package.json','utf8'));
-  for(const name of ['macos-universal.dmg','windows-x64.zip','linux-x86_64.AppImage'])await fs.writeFile(path.join(directory,`CacheKeeper-${pkg.version}-${name}`),'synthetic installer');
-  const catalog=await releaseAssets({root:process.cwd(),directory});
-  assert.equal(catalog.app.assets.find(a=>a.platform==='linux').arch,'x64');
-  const repository='synthetic-owner/cachekeeper',tag=`v${pkg.version}`;
-  const names=(await fs.readdir(directory));
-  const assets=await Promise.all(names.map(async name=>({name,size:(await fs.stat(path.join(directory,name))).size,browser_download_url:`https://github.com/${repository}/releases/download/${tag}/${name}`})));
-  const server=http.createServer(async(req,res)=>{
-    if(req.url.endsWith('/releases/latest'))res.end(JSON.stringify({tag_name:tag,draft:false,prerelease:false,assets,body:'synthetic release notes'}));
-    else {const name=decodeURIComponent(req.url.split('/').at(-1));if(!names.includes(name)){res.writeHead(404);res.end();}else res.end(await fs.readFile(path.join(directory,name)));}
-  });
-  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));t.after(()=>{server.closeAllConnections();return new Promise(resolve=>server.close(resolve));});
-  const source=new GitHubReleases({repository,fetch:(url,options)=>fetch(`http://127.0.0.1:${server.address().port}${new URL(url).pathname}`,options)});
-  const dataRoot=path.join(root,'user-data');let installedVersion='0.2.0',working=false,mutations=0;
-  const installer=new PluginInstaller({resources:'unused',dataRoot,repository:{stopAll:async()=>{throw new Error('Plugin-only update must not stop unrelated sessions');}},cli:'synthetic-cli',run:async(_exe,args)=>{
-    if(args[1]==='list')return JSON.stringify([{id:'session-cache-keeper@yxkong-cache-tools',version:installedVersion,enabled:true}]);
-    mutations++;installedVersion=JSON.parse(await fs.readFile(path.join(dataRoot,'marketplace/plugin/.claude-plugin/plugin.json'),'utf8')).version;return '{"outcome":"ok"}';
-  }});
-  const manager=new UpdateManager({version:pkg.version,pluginVersion:'0.2.0',source,installer,repository:{refresh:async()=>[{online:true,enabled:false,busy:working,inFlight:false}]},dataRoot,platform:'darwin',arch:'arm64'});
-  await manager.check();assert.equal(manager.snapshot().app.available,false);assert.equal(manager.snapshot().plugin.available,true);
-  await manager.downloadPlugin();assert.equal(mutations,0);await assert.rejects(fs.access(path.join(dataRoot,'controls')));
-  working=true;await assert.rejects(manager.applyPlugin(),/任务|保活/);assert.equal(mutations,0);
-  working=false;await manager.applyPlugin();assert.equal(installedVersion,catalog.plugin.version);assert.equal(manager.snapshot().plugin.current,installedVersion);
-  assert.equal(await fs.readFile(path.join(dataRoot,'marketplace/plugin/hooks/register.ts'),'utf8'),await fs.readFile('plugin/hooks/register.ts','utf8'));
-  await assert.rejects(fs.access(path.join(dataRoot,'controls')));
-  await manager.check();await assert.rejects(manager.applyPlugin(),/先下载/);
-  const manual=new UpdateManager({version:'0.2.9',pluginVersion:'0.2.0',source,installer,repository:{refresh:async()=>[]},dataRoot:path.join(root,'manual'),platform:'darwin',arch:'arm64'});
-  await manual.check();await manual.downloadApp();const downloaded=await manual.applyApp();assert.equal(await fs.readFile(downloaded,'utf8'),'synthetic installer');
+import {createHash} from 'node:crypto';
+import {BridgeRepository} from './native-bridge.mjs';
+import {releaseAssets} from '../scripts/lib/release-assets.mjs';
+import {validateBundle,validateCatalog} from '../app/core/release-contract.mjs';
+test('Tauri installers produce a legacy-readable catalog and a complete eight-file connector bundle',async t=>{
+ const root=await fs.mkdtemp(path.resolve('.tmp/release-test-'));t.after(()=>fs.rm(root,{recursive:true,force:true}));
+ const pkg=JSON.parse(await fs.readFile('package.json','utf8'));
+ const names=['mac-universal.dmg','mac-universal.app.tar.gz','win-x64.exe','linux-x64.deb','linux-x86_64.AppImage'];
+ for(const name of names)await fs.writeFile(path.join(root,`CacheKeeper-${pkg.version}-${name}`),'synthetic installer');
+ const catalog=validateCatalog(await releaseAssets({root:process.cwd(),directory:root}));assert.equal(catalog.app.assets.length,names.length);
+ assert.equal(catalog.app.assets.find(a=>a.file.endsWith('.AppImage')).arch,'x64');assert.equal(catalog.app.assets.find(a=>a.file.endsWith('.deb')).platform,'linux');
+ const bytes=await fs.readFile(path.join(root,catalog.plugin.file));assert.equal(createHash('sha256').update(bytes).digest('hex'),catalog.plugin.sha256);
+ const consumer=new BridgeRepository({roots:[path.join(root,'isolated')],transcriptsRoot:path.join(root,'transcripts')});t.after(()=>consumer.close());
+ assert.equal(await consumer.request({method:'validateCatalog',catalog}),true);assert.equal(await consumer.request({method:'validateBundle',bundle:JSON.parse(bytes),expected:catalog.plugin}),8);
+ const files=validateBundle(JSON.parse(bytes),catalog.plugin);assert.equal(files.size,8);assert.equal(files.get('plugin/hooks/register.ts').toString(),await fs.readFile('plugin/hooks/register.ts','utf8'));
+ await assert.rejects(fs.access(path.join(root,'tauri-latest.json')));
 });

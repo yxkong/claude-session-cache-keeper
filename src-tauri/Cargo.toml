@@ -1,0 +1,42 @@
+[package]
+name = "cachekeeper"
+version = "0.4.0"
+edition = "2021"
+default-run = "cachekeeper"
+license = "MIT"
+description = "Per-session Claude Code cache keeper"
+
+[lib]
+name = "cachekeeper_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["tray-icon", "image-png"] }
+tauri-plugin-single-instance = "2"
+tauri-plugin-opener = "2"
+tauri-plugin-clipboard-manager = "2"
+tauri-plugin-updater = "=2.14.1"
+serde_json = "1"
+serde = { version = "1", features = ["derive"] }
+uuid = { version = "1", features = ["v4"] }
+semver = "1"
+sha2 = "0.10"
+base64 = "0.22"
+regex = "1"
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "stream", "json", "system-proxy"] }
+tokio = { version = "1", features = ["process", "time", "io-util", "sync", "fs", "macros", "rt-multi-thread"] }
+tokio-util = { version = "0.7", features = ["rt"] }
+bytes = "1"
+
+[dev-dependencies]
+tempfile = "3"
+
+[profile.release]
+opt-level = "s"
+lto = "thin"
+codegen-units = 1
+strip = "symbols"
+panic = "unwind"

@@ -87,6 +87,7 @@ async function refresh() {
     $('version').textContent = `CacheKeeper ${state.version}`;
     if (state.warnings?.length) tell(state.warnings.join('；'), true);
     render();
+    await api.ready?.();
   } catch (e) { tell(e.message, true); }
 }
 async function save(enable, stopping = false) {

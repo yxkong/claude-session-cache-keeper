@@ -59,7 +59,7 @@ test('publishes a selectable session, but absent controls never send a request',
   await $.session.start({ cwd: '/work/project', surface: 'desktop', isInteractive: true })
   expect(w.snapshot().enabled).toBe(false)
   expect(w.snapshot().sessionId).toBe('S1')
-  expect(w.snapshot().pluginVersion).toBe('0.2.1')
+  expect(w.snapshot().pluginVersion).toBe('0.2.2')
   expect(w.snapshot().bridgeProtocol).toBe(1)
   await complete($)
   await clock.advance(600_000)

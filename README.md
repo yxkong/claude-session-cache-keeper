@@ -1,58 +1,35 @@
 # CacheKeeper · by yxkong
 
-<img src="assets/icons/icon-128.png" width="88" alt="CacheKeeper fish-loop icon">
+按会话管理 Claude Code 的 API 提示词缓存续热。每条会话单独选择、单独设置，默认关闭；桌面应用不持有 API Key。
 
-Choose which Claude Code sessions to keep warm. Set a random interval, cap idle attempts, and see the actual cache-token usage. Every new connection starts **off**.
+0.4.0 将桌面底座迁移至 **Tauri 2 + Rust + 系统 WebView**，保留原有界面和连接插件。该版本尚待发布；公开安装包见 [Releases](https://github.com/yxkong/claude-session-cache-keeper/releases)。
 
-CacheKeeper is an independent desktop application for macOS, Windows and Linux. The application bundles its Claude Code connector, so people download one desktop package and install the connector from the app. API calls use the original session's model and credentials; the app never asks for an API key.
+## 使用
 
-[中文使用说明](docs/quickstart.md) · [Behavior and compatibility](docs/contract.md) · [Attribution](THIRD_PARTY_NOTICES.md)
+1. 下载适合系统的安装包：Mac 通用 DMG、Windows 安装程序、Linux DEB 或 AppImage。
+2. 安装并登录 Claude Code CLI，在应用内点击“安装连接插件”。
+3. 在目标 Code 会话执行 `/reload-plugins`，以应用显示的执行器版本确认连接。
+4. 选择需要保活的会话，设置参数后单独开启。
 
-## Defaults
+默认随机间隔 260～280 秒，支持 30～280 秒；建议每段空闲尝试 6 次，允许其他正整数；可设置最小缓存 token 门槛。正常工作请求重置预算，保活请求不重置。次数用完、过期、失败或未命中时停止本轮。缓存是否命中及实际费用取决于原会话的 API 供应源。
 
-- Random interval: **260–280 seconds** for a 5-minute cache window.
-- Maximum: **6 attempts per idle stretch**. Normal work resets the budget; keepalive calls do not.
-- Optional minimum cached-token threshold; each session has its own switch and settings.
-- Stop after a failed request, cache miss, expired window or exhausted attempt budget.
+右上角“检查更新”分别管理应用和连接插件。插件安装后需要在目标会话手动重载，不会自动重启 Claude。详见 [使用说明](docs/quickstart.md)和[更新说明](docs/updates.md)。
 
-Keepalive requests have a cost. The interface reports cache reads, writes and output tokens; your API provider determines actual billing and cache behavior. There is no promise that every provider will preserve the same cache prefix.
+## 本地构建
 
-## Use
-
-Install and sign in to Claude Code CLI first. Open CacheKeeper, install the bundled connector, reload plugins in the selected Code session, then check the reported executor version before enabling that connection. Older Desktop sessions may need an executor restart after their current work finishes. Ordinary Claude Chat conversations are outside this connector's scope.
-
-The local release artifacts are a macOS universal DMG, Windows x64 portable ZIP and Linux x64 tar.gz. The included GitHub Actions workflow builds native macOS DMG, Windows NSIS and Linux AppImage installers on their respective hosts. A generated archive is not proof of target-system runtime compatibility; see `release/verification.json` for the actual validation status.
-
-## Build from source
-
-Requires Node.js 22.18 or later. Dependency versions are pinned in `package-lock.json`.
+需要 Node.js 22、Rust stable，以及 Tauri 对应平台的原生开发依赖。Mac 通用包还需要 `aarch64-apple-darwin` 与 `x86_64-apple-darwin` Rust 标准库目标。
 
 ```sh
 npm ci
-npm run icons
 npm run build
 npm test
-npm run test:plugin
+npm run test:rust
 npm run package
 npm run verify
 ```
 
-`npm run test:plugin` requires a Claude Code CLI version that includes the hooks-module test harness. `npm run package` builds the three local runtime packages on macOS; select one with `npm run package -- --target=mac`, `windows`, or `linux`. macOS packaging needs Apple's command-line tools. Native installers can also be built with the included `electron-builder.yml` on each target host.
+安装包位于 `release/native/`。Windows、Linux 由各自的原生 CI 构建；构建成功与实际运行分别记录在[验证记录](docs/verification.md)。
 
-## Data and privacy
+## 开源与归属
 
-The connector and app exchange status and controls under the user's `.cache-keeper` directory. `CACHE_KEEPER_DATA_DIR` overrides it for isolated testing. Session status includes IDs, project paths, a short preview and token counts, but no API key or complete transcript. The app reads local transcript-tail title metadata to display recognizable names and respects `CLAUDE_CONFIG_DIR` for transcript lookup.
-
-When migrating from the earlier Mac prototype, the installer stops legacy controls and disables the old connector before installing the new one. Legacy connections are visible but cannot be enabled from this app. Close the older management application before migration.
-
-Closing the window leaves the app in the tray; a normal quit stops known keepalive controls. A forced process termination may leave the remaining attempts running. Already-sent requests cannot be retracted.
-
-## Distribution status
-
-Local builds are not Developer ID-notarized or Windows publisher-signed. Signing identities and credentials are not included. GitHub creation, remote publication and signing are separate release steps.
-
-MIT licensed. The request-clock, session-fork and cache-hit mechanisms build on [cache-tax](https://github.com/karanb192/cache-tax); its copyright and license are preserved. The new identity uses an original fish/refresh-loop mark inspired by yxkong's personal brand and has no affiliation with Anthropic.
-
-## 更新
-
-项目仓库名为 `claude-session-cache-keeper`，应用和 Logo 品牌短名为 **CacheKeeper**。0.3.0 增加“检查更新”入口，应用和连接插件分别下载、按需安装。插件更新不会自动开启会话；任务完成并停止保活后安装，再在目标 Claude 会话手动重载。首次 GitHub Release 发布后远程版本才可用。当前本地应用包下载后需手动替换；正式签名原生包支持原生更新安装。详见 [更新说明](docs/updates.md)。
+MIT。缓存请求时钟、会话 fork 和缓存命中判定改造自 [cache-tax](https://github.com/karanb192/cache-tax)，保留原作者版权。完整归属见 [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES.md)。

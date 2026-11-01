@@ -7,3 +7,5 @@ build/
 plugin/.claude-plugin/types/
 *.log
 bak/
+src-tauri/target/
+src-tauri/gen/

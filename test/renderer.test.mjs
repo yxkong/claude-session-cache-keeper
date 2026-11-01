@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { JSDOM } from 'jsdom';
-import { BridgeRepository } from '../app/core/bridge.mjs';
+import { BridgeRepository } from './native-bridge.mjs';
 
 async function until(check) {
   const end = Date.now() + 2000;
@@ -21,7 +21,7 @@ async function view(t,{demo=true,updates=null,update=async()=>{throw new Error('
   const calls = [];
   dom.window.cacheKeeper = { state, update:async action=>{updates=await update(action);return updates;},save: async (id, input) => { calls.push({ id, input }); await repo.save(id, input); return state(); }, copyReload: async () => {}, install: async () => { throw new Error('No real installation in renderer tests'); }, openDocs: async () => {} };
   dom.window.eval(await fs.readFile('dist/renderer/renderer.js','utf8'));
-  t.after(async () => { dom.window.close(); await fs.rm(dir, { recursive: true, force: true }); });
+  t.after(async () => { dom.window.close(); await repo.close(); await fs.rm(dir, { recursive: true, force: true }); });
   await until(() => dom.window.document.querySelector('[data-session-id="SID-a"]'));
   dom.window.document.querySelector('[data-session-id="SID-a"]').click();
   await until(() => dom.window.document.getElementById('session-title').textContent === '会话 A');

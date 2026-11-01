@@ -1,8 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
-test('missing CI signing secret does not become the project directory as a certificate path',()=>{
-  const inspect=value=>JSON.parse(execFileSync(process.execPath,['-e',"const c=require('./electron-builder.config.cjs');console.log(JSON.stringify({link:process.env.CSC_LINK,identity:c.mac.identity,publish:c.publish.repo}))"],{encoding:'utf8',env:{...process.env,CSC_LINK:value,CACHE_KEEPER_NATIVE_UPDATES:'0'}}));
-  const empty=inspect('');assert.equal(empty.link,undefined);assert.equal(empty.identity,'-');assert.equal(empty.publish,'claude-session-cache-keeper');
-  assert.equal(inspect('synthetic-signing-reference').link,'synthetic-signing-reference');
+import fs from 'node:fs/promises';
+test('Tauri package uses a stable identity, restricted IPC and no bundled sidecar runtime',async()=>{
+ const c=JSON.parse(await fs.readFile('src-tauri/tauri.conf.json','utf8')),p=JSON.parse(await fs.readFile('package.json','utf8'));
+ assert.equal(c.identifier,'io.yxkong.cachekeeper');assert.equal(c.bundle.externalBin,undefined);assert.equal(p.dependencies.electron,undefined);assert.equal(p.devDependencies.electron,undefined);
+ assert.ok(!JSON.stringify(c).includes('dangerousDisableAssetCspModification'));
+ const permissions=JSON.parse(await fs.readFile('src-tauri/capabilities/main.json','utf8')).permissions;
+ assert.ok(!permissions.some(p=>/fs:|shell:|http:|updater:/.test(p)));
+ assert.equal(JSON.parse(await fs.readFile('package-lock.json','utf8')).version,p.version);
 });

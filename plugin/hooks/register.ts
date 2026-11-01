@@ -14,7 +14,7 @@ const safe = (text: string) => text.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 128
 async function publish($: EngineInterface, r: Runtime) {
   r.writing = r.writing.catch(() => {}).then(async () => {
     await $.fs.write(`${r.root}/sessions/${r.id}.json`, JSON.stringify({
-      schema: 1, bridgeProtocol: 1, capabilities: { customAttemptBudget: true }, pluginVersion: '0.2.1', id: r.id, sessionId: r.sessionId, project: r.project, model: r.model,
+      schema: 1, bridgeProtocol: 1, capabilities: { customAttemptBudget: true }, pluginVersion: '0.2.2', id: r.id, sessionId: r.sessionId, project: r.project, model: r.model,
       title: r.title, surface: r.surface, heartbeat: await $.clock.now(), active: !r.ended,
       controlRevision: r.revision, ...r.state,
     }))

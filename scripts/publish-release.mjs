@@ -7,7 +7,7 @@ if(config.repository!==process.env.GITHUB_REPOSITORY)throw new Error('Release re
 const tag=`v${pkg.version}`;
 if(process.env.GITHUB_REF_TYPE==='tag' && process.env.GITHUB_REF_NAME!==tag)throw new Error('Tag and application version differ.');
 const directory='release/native';
-const files=(await fs.readdir(directory)).filter(n=>/^(?:CacheKeeper-|latest(?:-mac|-linux)?\.yml$|cachekeeper-update\.json$|SHA256SUMS\.txt$)/.test(n)).map(n=>path.join(directory,n));
+const files=(await fs.readdir(directory)).filter(n=>/^(?:CacheKeeper-|tauri-latest\.json$|cachekeeper-update\.json$|SHA256SUMS\.txt$)/.test(n)).map(n=>path.join(directory,n));
 const run=args=>{const r=spawn.sync('gh',args,{stdio:'inherit'});if(r.error||r.status!==0)throw r.error||new Error('GitHub Release command failed.');};
 // A draft is invisible to clients until every asset has uploaded successfully.
 const exists=spawn.sync('gh',['release','view',tag,'--repo',config.repository,'--json','isDraft'],{encoding:'utf8'});

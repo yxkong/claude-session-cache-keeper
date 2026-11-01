@@ -3,12 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src ipc: http://ipc.localhost; object-src 'none'; base-uri 'none'; frame-src 'none'">
   <title>CacheKeeper · by yxkong</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <header class="app-header">
+  <header class="app-header" data-tauri-drag-region>
     <div class="header-actions"><span class="live-badge"><i></i><span id="connection-count">正在读取会话</span></span><button id="updates" class="secondary">检查更新</button><button id="install" class="secondary">安装连接插件</button></div>
   </header>
   <main>

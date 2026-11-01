@@ -3,6 +3,8 @@
 export type Policy = { minSeconds: number; maxSeconds: number; maxAttempts: number; minCachedTokens: number }
 export type Usage = { input_tokens: number; output_tokens: number; cache_read_input_tokens: number; cache_creation_input_tokens: number }
 export const defaults: Policy = { minSeconds: 260, maxSeconds: 280, maxAttempts: 6, minCachedTokens: 0 }
+// Exported to the build-time Rust contract generator; this remains the sole owner.
+export const limits = { minSeconds: 30, maxSeconds: 280, maxCachedTokens: 10_000_000 }
 export const TTL_MS = 300_000
 const SAFETY_MS = 15_000
 export type Phase = 'off' | 'waiting' | 'working' | 'scheduled' | 'sending' | 'limit' | 'expired' | 'tokens' | 'miss' | 'error'
@@ -21,8 +23,8 @@ export function validatePolicy(p: unknown): p is Policy {
   if (!p || typeof p !== 'object') return false
   const a = p as Policy
   return [a.minSeconds, a.maxSeconds, a.maxAttempts, a.minCachedTokens].every(Number.isSafeInteger)
-    && a.minSeconds >= 30 && a.maxSeconds <= 280 && a.minSeconds <= a.maxSeconds
-    && a.maxAttempts >= 1 && a.minCachedTokens >= 0 && a.minCachedTokens <= 10_000_000
+    && a.minSeconds >= limits.minSeconds && a.maxSeconds <= limits.maxSeconds && a.minSeconds <= a.maxSeconds
+    && a.maxAttempts >= 1 && a.minCachedTokens >= 0 && a.minCachedTokens <= limits.maxCachedTokens
 }
 function resetBudget(s: State) {
   s.attempts = 0; s.readTokens = 0; s.writeTokens = 0; s.outputTokens = 0; s.lastHit = null; s.stopped = ''

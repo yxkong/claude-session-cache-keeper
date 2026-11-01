@@ -2,14 +2,14 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { BridgeRepository } from '../app/core/bridge.mjs';
+import { BridgeRepository } from './native-bridge.mjs';
 
 const fresh = async t => {
   const dir = await fs.mkdtemp(path.resolve('.tmp/bridge-test-'));
   t.after(() => fs.rm(dir, { recursive: true, force: true }));
   await fs.mkdir(path.join(dir, 'sessions'), { recursive: true });
   const write = async (id, extra = {}) => fs.writeFile(path.join(dir, 'sessions', `${id}.json`), JSON.stringify({ schema: 1, id, sessionId: `SID-${id}`, pluginVersion: '0.2.0', title: 'Synthetic session', project: '/work/demo', model: 'model-test', active: true, heartbeat: Date.now(), enabled: false, controlRevision: '', policy: { minSeconds: 260, maxSeconds: 280, maxAttempts: 6, minCachedTokens: 0 }, attempts: 0, nextAt: 0, lastCacheAt: 0, cacheTokens: 0, phase: 'off', readTokens: 0, writeTokens: 0, outputTokens: 0, lastHit: null, ...extra }));
-  return { dir, write, repo: new BridgeRepository({ roots: [dir], transcriptsRoot: path.join(dir, 'transcripts') }) };
+  const repo = new BridgeRepository({ roots: [dir], transcriptsRoot: path.join(dir, 'transcripts') }); t.after(() => repo.close()); return { dir, write, repo };
 };
 
 test('only explicitly selected online sessions receive control files', async t => {

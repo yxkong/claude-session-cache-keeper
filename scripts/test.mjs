@@ -5,6 +5,7 @@ import spawn from 'cross-spawn';
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 await fs.mkdir(path.join(root, '.tmp'), { recursive: true });
 const plugin = process.argv.includes('--plugin');
+if (!plugin) { const built=spawn.sync('cargo',['build','--locked','--manifest-path','src-tauri/Cargo.toml','--example','bridge-contract'],{cwd:root,stdio:'inherit'}); if(built.status!==0)process.exit(built.status??1); }
 const command = plugin ? process.env.CLAUDE_BIN || 'claude' : process.execPath;
 const args = plugin ? ['plugin', 'test', 'plugin'] : ['--experimental-strip-types', '--test', 'test/*.test.mjs'];
 const result = spawn.sync(command, args, { cwd: root, encoding: 'utf8', windowsHide: true, maxBuffer: 8 * 1024 * 1024 });

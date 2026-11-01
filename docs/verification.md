@@ -1,3 +1,28 @@
+# 0.4.0 Tauri 迁移验证
+
+验收宿主为 macOS / Apple Silicon；以下为实现者自测。Windows/Linux 构建脚本已迁移，尚未提交并触发对应 CI，不能据此声称已产出或运行三端安装包。
+
+| 检查 | 结果 | 实际边界 |
+|---|---|---|
+| Rust 桥接、安装、下载及 SDK 配置回归 | PASS，15 项 | 覆盖参数边界样例、单会话控制、旧连接、CLI 参数/超时、恢复、禁止降级、下载损坏及来源限制 |
+| 组件与发布契约 | PASS，15 项 | 组件调用真实 Rust 测试进程；发布生成结果再交 Rust 消费者校验；错误消息正常显示 |
+| Claude 连接插件 | PASS，30 项 | 使用合成模型、会话和请求，不发送真实 API 保活 |
+| Mac 通用包 | PASS | DMG 11,544,443 字节，约 11 MiB；同时包含 x86_64 和 arm64 |
+| Mac 包完整性 | PASS | ad-hoc 签名、资源与源码一致、无 Node/Chromium/测试程序、二进制不含本机主目录 |
+| Mac 原生 WebView 启动与正常退出 | PASS | 成品在隔离目录读取两条合成会话，通过真实 IPC 回报界面加载，正常退出码 0 |
+| 原生窗口点击与视觉 | NOT_RUN_LOCKED | Mac 锁屏，尚不能使用桌面工具操作；组件验证不替代此项 |
+| Windows/Linux 包与实际运行 | NOT_RUN | 需获准提交推送后运行三端 CI；目标系统实际交互另验 |
+| 原生签名跨版本升级、系统签名/公证 | NOT_RUN | 未创建或配置发布签名密钥；当前应用更新使用校验下载后手动安装 |
+| 真实会话与 API | NOT_RUN | 保留原运行应用，没有重启 Claude、安装真实插件或开启真实保活 |
+
+原生验收曾捕获未配置更新插件时的启动失败；已补实际 SDK 配置反序列化回归并验证成品启动通过。Tauri 字符串错误曾导致界面消息丢失，保留了先失败后通过的接口适配回归。Mac DMG 使用磁盘映像工具生成，避免依赖 Finder 布局及解锁状态。
+
+复现入口：`npm run build`、`npm test`、`npm run test:rust`、`npm run test:plugin`、`npm run package`、`npm run verify`。原生成品启动脚本为 `scripts/smoke-launch.mjs --exit-after-ready`，必须以隔离数据运行。构建报告位于 `release/native/`，启动报告位于 `.tmp/smoke-evidence.json`。
+
+## 0.3.0 历史说明
+
+以下原始记录形成于 0.3.0 发布前，保留为历史测试记录，不代表当前远端状态。0.3.0 后来已发布至 [GitHub Release](https://github.com/yxkong/claude-session-cache-keeper/releases/tag/v0.3.0)。
+
 # 0.3.0 验证记录
 
 首次 GitHub 原生构建中，Windows NSIS 与 Linux AppImage 通过，Mac 因缺失 secret 被注入为空的 `CSC_LINK`，进而被构建器解析为项目目录而失败。配置层将空引用视为缺省，实际证书引用保持原值；已通过先失败后通过的隔离配置回归保护。三端最终构建与发布状态以 GitHub Actions 和 Release 为准。
