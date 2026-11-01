@@ -1,23 +1,31 @@
 # 0.4.0 Tauri 迁移验证
 
-验收宿主为 macOS / Apple Silicon；以下为实现者自测。Windows/Linux 构建脚本已迁移，尚未提交并触发对应 CI，不能据此声称已产出或运行三端安装包。
+原生界面验收宿主为 macOS / Apple Silicon，以下为实现者自测。三端原生构建与自动测试已在 GitHub Actions 通过；Windows/Linux 桌面实际交互尚未执行。
 
 | 检查 | 结果 | 实际边界 |
 |---|---|---|
 | Rust 桥接、安装、下载及 SDK 配置回归 | PASS，15 项 | 覆盖参数边界样例、单会话控制、旧连接、CLI 参数/超时、恢复、禁止降级、下载损坏及来源限制 |
 | 组件与发布契约 | PASS，15 项 | 组件调用真实 Rust 测试进程；发布生成结果再交 Rust 消费者校验；错误消息正常显示 |
 | Claude 连接插件 | PASS，30 项 | 使用合成模型、会话和请求，不发送真实 API 保活 |
-| Mac 通用包 | PASS | DMG 11,544,443 字节，约 11 MiB；同时包含 x86_64 和 arm64 |
+| Mac 通用包 | PASS | CI DMG 11,581,969 字节，约 11.05 MiB；同时包含 x86_64 和 arm64 |
 | Mac 包完整性 | PASS | ad-hoc 签名、资源与源码一致、无 Node/Chromium/测试程序、二进制不含本机主目录 |
 | Mac 原生 WebView 启动与正常退出 | PASS | 成品在隔离目录读取两条合成会话，通过真实 IPC 回报界面加载，正常退出码 0 |
-| 原生窗口点击与视觉 | NOT_RUN_LOCKED | Mac 锁屏，尚不能使用桌面工具操作；组件验证不替代此项 |
-| Windows/Linux 包与实际运行 | NOT_RUN | 需获准提交推送后运行三端 CI；目标系统实际交互另验 |
+| 原生窗口点击与视觉 | PASS_AGENT | 紧凑列表与状态、保存 12 次保持关闭、单会话开启、无效草稿下停止、等待缓存、公开更新检查与正常退出均已核验 |
+| Windows/Linux 原生包与自动测试 | PASS_CI | Windows NSIS 3.22 MiB；Linux DEB 5.16 MiB、AppImage 79.78 MiB；目标系统桌面实际交互仍为 NOT_RUN |
 | 原生签名跨版本升级、系统签名/公证 | NOT_RUN | 未创建或配置发布签名密钥；当前应用更新使用校验下载后手动安装 |
 | 真实会话与 API | NOT_RUN | 保留原运行应用，没有重启 Claude、安装真实插件或开启真实保活 |
 
 原生验收曾捕获未配置更新插件时的启动失败；已补实际 SDK 配置反序列化回归并验证成品启动通过。Tauri 字符串错误曾导致界面消息丢失，保留了先失败后通过的接口适配回归。Mac DMG 使用磁盘映像工具生成，避免依赖 Finder 布局及解锁状态。
 
 复现入口：`npm run build`、`npm test`、`npm run test:rust`、`npm run test:plugin`、`npm run package`、`npm run verify`。原生成品启动脚本为 `scripts/smoke-launch.mjs --exit-after-ready`，必须以隔离数据运行。构建报告位于 `release/native/`，启动报告位于 `.tmp/smoke-evidence.json`。
+
+## 三端 CI 与源码边界
+
+[GitHub Actions 41306074208](https://github.com/yxkong/claude-session-cache-keeper/actions/runs/41306074208) 对提交 `9cc01bb3073b72a6ab01b314329aa38256bf499f` 的 macOS、Windows、Linux 自动测试、原生打包、体积检查及汇总清单全部通过。汇总产物的四个安装包、独立插件包及更新清单共六个文件，下载后逐项 SHA-256 回读一致。
+
+发布步骤为 skipped；没有合并主分支或发布 0.4.0，公开版本仍为 0.3.0。随后仅修正演示夹具的阶段字段，使其随 enabled/busy 正确显示等待或工作状态，并补充本节验收记录；该夹具不随应用分发，未重复运行三端完整构建。夹具修改经过语法检查及 Mac 原生等待状态点击复核。
+
+原生验收使用独立数据目录和合成会话。保存后仍关闭，开启和停止只改变被选中的合成控制文件；另一会话无控制文件。更新检查使用公开 GitHub Release，不读取演示模式之外的真实 CLI 安装状态。没有为验收开启真实会话保活或发送模型请求。
 
 ## 0.3.0 历史说明
 

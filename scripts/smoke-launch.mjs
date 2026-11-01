@@ -7,7 +7,7 @@ const data=await fs.mkdtemp(path.resolve('.tmp/ui-smoke-'));await fs.mkdir(path.
 const policy={minSeconds:260,maxSeconds:280,maxAttempts:6,minCachedTokens:0};
 async function write(){for(const [id,title,busy] of [['demo-a','【演示】接口计费改造',false],['demo-b','【演示】个人工具设计',true]]){
  const c=await fs.readFile(path.join(data,'controls',id+'.json'),'utf8').then(JSON.parse).catch(()=>null);
- await fs.writeFile(path.join(data,'sessions',id+'.json'),JSON.stringify({schema:1,id,sessionId:id,title,project:'/synthetic/project',model:'demo-model',pluginVersion:'0.2.2',bridgeProtocol:1,capabilities:{customAttemptBudget:true},heartbeat:Date.now(),active:true,enabled:c?.enabled??false,busy,inFlight:false,controlRevision:c?.revision??'',policy:c?.policy??policy,attempts:0,nextAt:0,lastCacheAt:0,cacheTokens:0,phase:'off',readTokens:0,writeTokens:0,outputTokens:0,lastHit:null}));
+ await fs.writeFile(path.join(data,'sessions',id+'.json'),JSON.stringify({schema:1,id,sessionId:id,title,project:'/synthetic/project',model:'demo-model',pluginVersion:'0.2.2',bridgeProtocol:1,capabilities:{customAttemptBudget:true},heartbeat:Date.now(),active:true,enabled:c?.enabled??false,busy,inFlight:false,controlRevision:c?.revision??'',policy:c?.policy??policy,attempts:0,nextAt:0,lastCacheAt:0,cacheTokens:0,phase:c?.enabled?(busy?'working':'waiting'):'off',readTokens:0,writeTokens:0,outputTokens:0,lastHit:null}));
 }}
 await write();const timer=setInterval(()=>write().catch(console.error),1000);
 const executable=process.env.CACHE_KEEPER_TEST_EXECUTABLE||path.resolve('src-tauri/target/debug/cachekeeper'+(process.platform==='win32'?'.exe':''));
