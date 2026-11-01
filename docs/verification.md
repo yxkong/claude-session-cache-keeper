@@ -2,6 +2,8 @@
 
 首次 GitHub 原生构建中，Windows NSIS 与 Linux AppImage 通过，Mac 因缺失 secret 被注入为空的 `CSC_LINK`，进而被构建器解析为项目目录而失败。配置层将空引用视为缺省，实际证书引用保持原值；已通过先失败后通过的隔离配置回归保护。三端最终构建与发布状态以 GitHub Actions 和 Release 为准。
 
+三端构建通过后，首次汇总未识别 AppImage 的 `x86_64` 后缀，清单完整性校验阻止了发布。生成器现将其归一为协议中的 `x64`，HTTP 发布集成用例改用真实命名格式，先复现缺失平台错误再验证修复。
+
 构建宿主：macOS / Apple Silicon，Node.js 22.21.0，Electron 45.2.1。应用版本 0.3.0，连接插件 0.2.1；机器结果见 `release/verification.json`。
 
 | 检查 | 结果 | 证据边界 |

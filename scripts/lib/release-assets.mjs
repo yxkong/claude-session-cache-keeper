@@ -20,7 +20,8 @@ export async function releaseAssets({root,directory}) {
   for(const name of await fs.readdir(directory)){
     if(!name.startsWith(`CacheKeeper-${pkg.version}-`)||!/(?:\.dmg|\.zip|\.exe|\.AppImage|\.tar\.gz)$/.test(name))continue;
     const platform=/(?:-macos-|-mac-)/.test(name)?'darwin':/(?:-windows-|-win-)/.test(name)?'win32':/-linux-/.test(name)?'linux':null;
-    const arch=/-universal\./.test(name)?'universal':/-arm64\./.test(name)?'arm64':/-x64\./.test(name)?'x64':null;
+    // AppImage uses x86_64 in filenames; Node and the update protocol use x64.
+    const arch=/-universal\./.test(name)?'universal':/-arm64\./.test(name)?'arm64':/-(?:x64|x86_64)\./.test(name)?'x64':null;
     if(platform&&arch)assets.push({...await describe(path.join(directory,name)),platform,arch});
   }
   for(const p of ['darwin','win32','linux'])if(!assets.some(a=>a.platform===p))throw new Error(`Release is missing ${p} application artifacts.`);

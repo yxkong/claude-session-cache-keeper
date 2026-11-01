@@ -11,8 +11,9 @@ test('published-format HTTP fixture downloads, verifies, and installs only the p
   const root=await fs.mkdtemp(path.resolve('.tmp/release-http-'));t.after(()=>fs.rm(root,{recursive:true,force:true}));
   const directory=path.join(root,'release');await fs.mkdir(directory);
   const pkg=JSON.parse(await fs.readFile('package.json','utf8'));
-  for(const name of ['macos-universal.dmg','windows-x64.zip','linux-x64.tar.gz'])await fs.writeFile(path.join(directory,`CacheKeeper-${pkg.version}-${name}`),'synthetic installer');
+  for(const name of ['macos-universal.dmg','windows-x64.zip','linux-x86_64.AppImage'])await fs.writeFile(path.join(directory,`CacheKeeper-${pkg.version}-${name}`),'synthetic installer');
   const catalog=await releaseAssets({root:process.cwd(),directory});
+  assert.equal(catalog.app.assets.find(a=>a.platform==='linux').arch,'x64');
   const repository='synthetic-owner/cachekeeper',tag=`v${pkg.version}`;
   const names=(await fs.readdir(directory));
   const assets=await Promise.all(names.map(async name=>({name,size:(await fs.stat(path.join(directory,name))).size,browser_download_url:`https://github.com/${repository}/releases/download/${tag}/${name}`})));
