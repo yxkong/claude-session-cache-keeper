@@ -123,6 +123,31 @@ pub async fn find_cli(runner: &impl Runner) -> Result<PathBuf> {
             }
         }
     }
+    // Desktop downloads its own Code runtime; using it does not require a separate CLI install.
+    let caches: Vec<PathBuf> = match std::env::consts::OS {
+        "macos" => ["Claude-3p", "Claude"]
+            .iter()
+            .map(|app| {
+                home.join("Library/Application Support")
+                    .join(app)
+                    .join("claude-code")
+            })
+            .collect(),
+        "windows" => ["APPDATA", "LOCALAPPDATA"]
+            .iter()
+            .filter_map(std::env::var_os)
+            .flat_map(|base| {
+                ["Claude-3p", "Claude"]
+                    .map(|app| PathBuf::from(&base).join(app).join("claude-code"))
+            })
+            .collect(),
+        _ => Vec::new(),
+    };
+    for cache in caches {
+        if let Some(cli) = desktop_cli_candidates(&cache).into_iter().next() {
+            return Ok(cli);
+        }
+    }
     #[cfg(not(windows))]
     for shell in if cfg!(target_os = "macos") {
         vec!["/bin/zsh", "/bin/bash"]
@@ -145,7 +170,43 @@ pub async fn find_cli(runner: &impl Runner) -> Result<PathBuf> {
         }
     }
     let _ = runner;
-    Err("未找到 Claude Code CLI。安装并登录 CLI 后再连接。".into())
+    Err("未找到可用的 Claude Code 执行器。请先打开 Claude Desktop 的本地 Code 会话，或安装 Claude Code CLI 后重试；也可在 Desktop 插件管理器中安装连接插件。".into())
+}
+/// Bounded discovery of Desktop's version/hash runtime cache, newest version first.
+pub fn desktop_cli_candidates(cache: &Path) -> Vec<PathBuf> {
+    let Ok(entries) = std::fs::read_dir(cache) else {
+        return Vec::new();
+    };
+    let mut versions: Vec<_> = entries
+        .take(256)
+        .filter_map(|e| {
+            let entry = e.ok()?;
+            let version = semver::Version::parse(entry.file_name().to_str()?).ok()?;
+            entry.path().is_dir().then_some((version, entry.path()))
+        })
+        .collect();
+    versions.sort_by(|a, b| b.0.cmp(&a.0));
+    let mut candidates = Vec::new();
+    for (_, version) in versions {
+        let mut roots = vec![version.clone()];
+        if let Ok(entries) = std::fs::read_dir(&version) {
+            roots.extend(
+                entries
+                    .take(256)
+                    .filter_map(|e| e.ok().map(|e| e.path()))
+                    .filter(|p| p.is_dir()),
+            );
+        }
+        for root in roots {
+            for relative in ["claude.app/Contents/MacOS/claude", "claude", "claude.exe"] {
+                let file = root.join(relative);
+                if executable(&file) {
+                    candidates.push(file);
+                }
+            }
+        }
+    }
+    candidates
 }
 fn executable(p: &Path) -> bool {
     let Ok(meta) = p.metadata() else {

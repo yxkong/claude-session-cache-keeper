@@ -1,6 +1,7 @@
 pub mod bridge;
 pub mod installer;
 pub mod release;
+pub mod support;
 mod updates;
 use bridge::{BridgeRepository, Result};
 use serde_json::{json, Value};
@@ -103,8 +104,43 @@ fn keeper_open_docs(window: tauri::WebviewWindow, app: tauri::AppHandle) -> Resu
     trusted(&window)?;
     use tauri_plugin_opener::OpenerExt;
     app.opener()
-        .open_url("https://code.claude.com/docs/en/setup", None::<&str>)
+        .open_url(
+            "https://code.claude.com/docs/en/discover-plugins",
+            None::<&str>,
+        )
         .map_err(|e| e.to_string())
+}
+#[tauri::command]
+fn keeper_open_resource(
+    window: tauri::WebviewWindow,
+    app: tauri::AppHandle,
+    state: tauri::State<'_, Arc<Runtime>>,
+    resource: String,
+) -> Result<()> {
+    trusted(&window)?;
+    use tauri_plugin_opener::OpenerExt;
+    app.opener()
+        .open_url(
+            support::resource_url(&resource, &state.source.repository)?,
+            None::<&str>,
+        )
+        .map_err(|e| e.to_string())
+}
+#[tauri::command]
+fn keeper_copy_wechat(window: tauri::WebviewWindow, app: tauri::AppHandle) -> Result<()> {
+    trusted(&window)?;
+    use tauri_plugin_clipboard_manager::ClipboardExt;
+    app.clipboard()
+        .write_text(support::product()["wechatName"].as_str().unwrap())
+        .map_err(|e| e.to_string())
+}
+#[tauri::command]
+fn keeper_complete_guide(
+    window: tauri::WebviewWindow,
+    state: tauri::State<'_, Arc<Runtime>>,
+) -> Result<()> {
+    trusted(&window)?;
+    support::complete_guide(&state.root)
 }
 #[tauri::command]
 fn keeper_frontend_ready(
@@ -152,6 +188,9 @@ pub fn run() {
             keeper_update,
             keeper_copy_reload,
             keeper_open_docs,
+            keeper_open_resource,
+            keeper_copy_wechat,
+            keeper_complete_guide,
             keeper_frontend_ready
         ])
         .setup(|app| {
@@ -199,10 +238,15 @@ pub fn run() {
             use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
             let open = MenuItem::with_id(app, "open", "打开会话列表", true, None::<&str>)?;
             let update = MenuItem::with_id(app, "updates", "检查更新…", true, None::<&str>)?;
+            let help = MenuItem::with_id(app, "help", "使用引导…", true, None::<&str>)?;
+            let about = MenuItem::with_id(app, "about", "关于 CacheKeeper…", true, None::<&str>)?;
             let stop = MenuItem::with_id(app, "stop", "停止全部保活", true, None::<&str>)?;
             let quit = MenuItem::with_id(app, "quit", "停止全部并退出", true, None::<&str>)?;
             let separator = PredefinedMenuItem::separator(app)?;
-            let menu = Menu::with_items(app, &[&open, &update, &stop, &separator, &quit])?;
+            let menu = Menu::with_items(
+                app,
+                &[&open, &help, &about, &update, &stop, &separator, &quit],
+            )?;
             let icon = if cfg!(target_os = "macos") {
                 include_bytes!("../../assets/icons/tray-mac.png").as_slice()
             } else {
@@ -231,7 +275,30 @@ pub fn run() {
                     _ => {}
                 })
                 .build(app)?;
-            app.set_menu(Menu::default(app.handle())?)?;
+            let native_menu = Menu::default(app.handle())?;
+            // Replace the default OS About panel with the same rich About used in the window.
+            // Keep native editing, window management and standard quit behavior.
+            for (index, item) in native_menu.items()?.iter().enumerate() {
+                if let Some(submenu) = item.as_submenu() {
+                    if (cfg!(target_os = "macos") && index == 0)
+                        || (!cfg!(target_os = "macos") && submenu.text()? == "Help")
+                    {
+                        submenu.remove_at(0)?;
+                        submenu.insert(&about, 0)?;
+                        submenu.insert(&help, 1)?;
+                    }
+                }
+            }
+            app.set_menu(native_menu)?;
+            app.on_menu_event(|app, event| {
+                let name = match event.id().as_ref() {
+                    "about" => "keeper:show-about",
+                    "help" => "keeper:show-help",
+                    _ => return,
+                };
+                show(app);
+                let _ = app.emit(name, ());
+            });
             if let Some(window) = app.get_webview_window("main") {
                 window.on_window_event({
                     let window = window.clone();

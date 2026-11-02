@@ -11,6 +11,7 @@
 - `src-tauri/src/release.rs`、`updates.rs`：发布契约、下载校验及应用/插件更新。
 - `src-tauri/src/lib.rs`、`tauri.conf.json`：Tauri 生命周期、托盘及受限 IPC。
 - `app/renderer/`：界面和交互。
+- `app/core/product.json`、`src-tauri/src/support.rs`：产品与公众号资料、首次使用偏好及固定产品链接。
 - `assets/brand/`：品牌主图；`scripts/icons.mjs` 生成各端图标。
 - `scripts/package.mjs`：跨平台运行包；`.github/workflows/build.yml`：原生安装器构建。
 - `docs/verification.md`、`release/verification.json`：人工说明与机器校验结果；构建、启动、视觉验收分开记录。

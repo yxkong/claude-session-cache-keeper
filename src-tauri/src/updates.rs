@@ -114,7 +114,7 @@ impl Runtime {
             warnings.push(e.clone());
         }
         Ok(
-            json!({"sessions":rows,"warnings":warnings,"version":VERSION,"executorVersion":plugin_version(),"platform":platform(),"arch":arch(),"demo":self.demo,"updates":self.snapshot()}),
+            json!({"sessions":rows,"warnings":warnings,"version":VERSION,"executorVersion":plugin_version(),"platform":platform(),"arch":arch(),"demo":self.demo,"updates":self.snapshot(),"guideSeen":crate::support::guide_seen(&self.root)}),
         )
     }
     pub fn idle(&self) -> Result<()> {

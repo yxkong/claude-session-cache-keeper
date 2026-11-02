@@ -198,3 +198,47 @@ async fn real_process_keeps_argument_boundaries_and_timeout_kills_child() {
         .unwrap_err();
     assert!(error.contains("超时"));
 }
+
+fn desktop_runtime(cache: &Path, relative: &str) -> PathBuf {
+    let file = cache.join(relative);
+    std::fs::create_dir_all(file.parent().unwrap()).unwrap();
+    std::fs::write(&file, "synthetic runtime, never executed").unwrap();
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(&file, std::fs::Permissions::from_mode(0o700)).unwrap();
+    }
+    file
+}
+#[test]
+fn desktop_discovery_handles_version_hash_bundles_and_semantic_order() {
+    let root = tempfile::tempdir().unwrap();
+    let older = desktop_runtime(
+        root.path(),
+        "2.1.9/oldhash/claude.app/Contents/MacOS/claude",
+    );
+    let newer = desktop_runtime(
+        root.path(),
+        "2.1.10/newhash/claude.app/Contents/MacOS/claude",
+    );
+    desktop_runtime(root.path(), "not-a-version/hash/claude");
+    std::fs::create_dir_all(root.path().join("2.1.11/incomplete")).unwrap();
+    assert_eq!(
+        installer::desktop_cli_candidates(root.path()),
+        vec![newer, older]
+    );
+}
+#[test]
+fn desktop_discovery_supports_exe_cache_and_skips_missing_or_nonexecutables() {
+    let root = tempfile::tempdir().unwrap();
+    assert!(installer::desktop_cli_candidates(&root.path().join("absent")).is_empty());
+    let exe = desktop_runtime(root.path(), "2.1.10/hash/claude.exe");
+    assert_eq!(installer::desktop_cli_candidates(root.path()), vec![exe]);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let disabled = desktop_runtime(root.path(), "2.1.11/hash/claude");
+        std::fs::set_permissions(disabled, std::fs::Permissions::from_mode(0o600)).unwrap();
+        assert_eq!(installer::desktop_cli_candidates(root.path()).len(), 1);
+    }
+}

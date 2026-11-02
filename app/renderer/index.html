@@ -18,10 +18,10 @@
       <input id="search" type="search" placeholder="搜索会话或项目" aria-label="搜索会话或项目">
       <label class="offline-option"><input id="offline" type="checkbox">显示离线会话</label>
       <div id="sessions" class="sessions" role="list" aria-label="会话列表"></div>
-      <div class="sidebar-foot status-legend" aria-label="会话状态说明"><span><i class="session-dot working"></i>工作中</span><span><i class="session-dot online"></i>在线</span><span><i class="session-dot"></i>离线</span></div>
+      <div class="sidebar-foot status-legend" aria-label="会话连接状态说明" title="颜色表示连接与工作状态；保活结果见所选会话详情"><span><i class="session-dot working"></i>工作中</span><span><i class="session-dot online"></i>在线</span><span><i class="session-dot"></i>离线</span></div>
     </aside>
     <section class="workspace">
-      <div id="empty" class="empty-state"><img src="logo.png" alt=""><span class="eyebrow">READY WHEN YOU ARE</span><h2>先连接一条 Code 会话</h2><p>安装连接插件后，在需要管理的会话中重载插件。<br>每条连接默认关闭，由你决定何时开启。</p><button id="empty-install" class="primary">安装连接插件</button><button id="docs" class="text-button">还没安装 Claude Code CLI？</button></div>
+      <div id="empty" class="empty-state"><img src="logo.png" alt=""><span class="eyebrow">READY WHEN YOU ARE</span><h2>先连接一条 Code 会话</h2><p>安装连接插件后，在需要管理的会话中重载插件。<br>每条连接默认关闭，由你决定何时开启。</p><button id="empty-install" class="primary">安装连接插件</button><button id="docs" class="text-button">CLI / Desktop 连接说明</button></div>
       <div id="detail" hidden>
         <div class="session-heading"><div><h2 id="session-title"></h2><p id="project" class="project"></p></div><div class="session-actions"><span id="phase" class="phase"></span><button id="toggle" type="button" class="primary">应用设置并开启</button></div></div>
         <div class="session-meta"><span id="model"></span><span id="executor"></span><span id="session-id"></span></div>
@@ -42,6 +42,49 @@
     </section>
   </main>
   <div id="notice" class="notice" role="status" hidden></div>
+  <dialog id="guide-dialog" class="support-dialog guide-dialog" aria-labelledby="guide-title" aria-describedby="guide-description">
+    <div class="support-heading"><span class="support-kicker">CACHEKEEPER · 使用引导</span><button id="guide-skip" class="text-button">暂时跳过</button></div>
+    <ol class="guide-steps" aria-label="使用步骤">
+      <li><button type="button" data-guide-step="0"><span>1</span>安装插件</button></li>
+      <li><button type="button" data-guide-step="1"><span>2</span>连接会话</button></li>
+      <li><button type="button" data-guide-step="2"><span>3</span>按需开启</button></li>
+    </ol>
+    <div id="guide-content">
+      <h2 id="guide-title" tabindex="-1">先安装连接插件</h2>
+      <p id="guide-description" class="support-description"></p>
+      <section id="guide-panel-0" class="guide-panel">
+        <p>支持使用 API 的 Claude Code CLI 和 Claude Desktop「Code」页签中的本地会话。准备好任一入口后，即可安装连接插件。</p>
+        <div class="guide-callout"><strong>应用负责管理，插件负责执行</strong><p>应用显示会话、设置和用量；连接插件在原会话中发出续热请求，沿用它的 API 配置。Desktop 用户也可以从 Code 页签的插件管理器安装。</p></div>
+        <div class="support-actions"><button id="guide-install" class="secondary">安装连接插件</button><button id="guide-docs" class="text-button">CLI / Desktop 插件安装说明 ↗</button></div>
+      </section>
+      <section id="guide-panel-1" class="guide-panel" hidden>
+        <p>回到需要管理的 CLI 会话或 Desktop「Code」会话，发送下面的命令，然后回到 CacheKeeper 刷新会话列表。</p>
+        <div class="guide-command"><code>/reload-plugins</code><button id="guide-copy-reload" class="secondary">复制命令</button></div>
+        <div class="guide-callout"><strong>重载后还没看到会话？</strong><p>重载只负责加载插件，列表需要等待连接上报。在原会话继续发送一条正常消息，再回来刷新；仍未出现时，待任务完成后重启 Claude，并核对执行器版本。</p></div>
+      </section>
+      <section id="guide-panel-2" class="guide-panel" hidden>
+        <p>在左侧选择一条会话，设置间隔、次数与 token 门槛，再点「应用设置并开启」。其他会话保持原来的开关。</p>
+        <dl class="guide-defaults"><div><dt>随机间隔</dt><dd id="guide-default-interval"></dd></div><div><dt>建议尝试</dt><dd id="guide-default-attempts"></dd></div><div><dt>token 门槛</dt><dd id="guide-default-tokens"></dd></div></dl>
+        <div class="guide-callout"><strong>默认关闭，由你决定</strong><p>保存设置不会自动开启。达到配置次数、缓存未命中或失败时停止本轮；正常工作请求会重新计数。</p></div>
+        <p class="support-muted">续热会产生 API 费用；实际费用和缓存命中以你的 API 服务账单为准。</p>
+      </section>
+    </div>
+    <p id="guide-feedback" class="support-feedback" role="status"></p>
+    <div class="support-footer"><button id="guide-back" class="text-button">上一步</button><span id="guide-progress" class="support-muted" aria-live="polite"></span><button id="guide-next" class="primary">下一步</button></div>
+  </dialog>
+  <dialog id="about-dialog" class="support-dialog about-dialog" aria-labelledby="about-title">
+    <div class="support-heading"><div class="about-identity"><img src="logo.png" alt=""><div><h2 id="about-title">CacheKeeper</h2><span id="about-version" class="support-muted"></span></div></div><button id="about-close" class="text-button">关闭</button></div>
+    <p id="product-description" class="about-description"></p>
+    <p class="support-description">支持 Claude Code CLI 与 Desktop「Code」本地会话，在空闲时续热你选中的会话。每条新连接默认关闭，间隔与尝试次数由你决定。</p>
+    <div class="about-links">
+      <button id="about-github" class="about-link"><span><strong>GitHub 项目</strong><small id="about-repository"></small></span><span aria-hidden="true">↗</span></button>
+      <button id="about-issues" class="about-link"><span><strong>反馈问题与建议</strong><small>前往 GitHub Issues</small></span><span aria-hidden="true">↗</span></button>
+      <div class="about-wechat"><div><strong>微信公众号</strong><span id="wechat-name"></span><small>在微信中搜索公众号名称</small></div><button id="about-wechat-copy" class="secondary">复制名称</button></div>
+    </div>
+    <p class="support-muted about-privacy">本机运行，不保存 API Key。续热沿用原会话的 API 配置并产生费用。<br>独立开源工具，与 Claude / Anthropic 官方无关联。</p>
+    <p id="about-feedback" class="support-feedback" role="status"></p>
+    <div class="support-footer"><span class="support-muted">by <button id="about-author" class="text-button">yxkong</button> · MIT 开源</span><div><button id="about-help" class="text-button">查看使用引导</button><button id="about-updates" class="secondary">检查更新</button></div></div>
+  </dialog>
   <dialog id="updates-dialog" aria-labelledby="updates-title">
     <div class="update-heading"><h2 id="updates-title">更新 CacheKeeper</h2><button id="updates-close" class="text-button">关闭</button></div>
     <p id="updates-source" class="update-muted"></p>
@@ -52,6 +95,6 @@
     <details id="release-notes" hidden><summary>本版发布说明</summary><pre id="release-notes-text"></pre></details>
     <div class="update-footer"><button id="release-page" class="text-button">查看 GitHub 发布页</button><button id="update-cancel" class="secondary" hidden>取消下载</button><button id="update-check" class="secondary">重新检查</button></div>
   </dialog>
-  <footer><span id="version">CacheKeeper</span><span>本机运行 · 不保存 API Key</span><button id="copy-reload" class="text-button">复制重载命令</button></footer>
+  <footer><button id="about" class="text-button" title="关于 CacheKeeper"><span id="version">CacheKeeper</span> ⓘ</button><span class="footer-description">会话缓存续热 · 本机运行</span><nav aria-label="帮助与产品信息"><button id="help" class="text-button">使用帮助</button><button id="github" class="text-button" title="查看 GitHub 项目">GitHub ↗</button><button id="wechat" class="text-button">公众号</button><button id="copy-reload" class="text-button">复制重载命令</button></nav></footer>
   <script src="renderer.js" defer></script>
 </body></html>

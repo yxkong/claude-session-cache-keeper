@@ -1,0 +1,6 @@
+{
+  "name": "CacheKeeper",
+  "description": "按会话管理 Claude Code 缓存续热",
+  "author": "yxkong",
+  "wechatName": "5ycode"
+}
